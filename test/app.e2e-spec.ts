@@ -16,14 +16,36 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
-
   afterEach(async () => {
     await app.close();
+  });
+
+  describe('GET /', () => {
+    it('should return 200 with HTML content-type', async () => {
+      const res = await request(app.getHttpServer()).get('/');
+      expect(res.status).toBe(200);
+      expect(res.headers['content-type']).toMatch(/text\/html/);
+    });
+
+    it('should contain premium welcome page markup', async () => {
+      const res = await request(app.getHttpServer()).get('/');
+      expect(res.text).toContain('<!DOCTYPE html>');
+      expect(res.text).toContain('Premium');
+      expect(res.text).toContain('Your API is');
+    });
+  });
+
+  describe('GET /health', () => {
+    it('should return 200 with status ok', async () => {
+      const res = await request(app.getHttpServer()).get('/health');
+      expect(res.status).toBe(200);
+      expect(res.body.status).toBe('ok');
+    });
+
+    it('should include uptime and timestamp', async () => {
+      const res = await request(app.getHttpServer()).get('/health');
+      expect(typeof res.body.uptime).toBe('number');
+      expect(res.body.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+    });
   });
 });
