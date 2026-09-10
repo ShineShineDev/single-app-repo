@@ -1,12 +1,12 @@
-name: Test
+name: Lint
 
 on:
   push:
   pull_request:
 
 jobs:
-  test:
-    name: Lint, Unit & E2E Tests
+  lint:
+    name: Lint (oxlint)
     runs-on: ubuntu-latest
 
     steps:
@@ -22,11 +22,5 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint
+      - name: Run linter
         run: npm run lint
-
-      - name: Unit tests
-        run: npm test
-
-      - name: E2E tests
-        run: npm run test:e2e

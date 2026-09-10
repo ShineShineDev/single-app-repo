@@ -1,0 +1,62 @@
+name: Security Scan
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Full scan every Monday at 08:00 UTC
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to GitHub Security tab
+
+jobs:
+  # ─── 1. package တွေထဲမှာ known CVE ရှိ/မရှိ စစ်မယ် (Dependency audit) ───────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit (npm audit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        # Fail on HIGH or CRITICAL vulnerabilities; report others
+        run: npm audit --audit-level=high
+
+  # ─── 2. Trivy က repo ထဲက filesystem ကို scan လုပ်ပါတယ်( Filesystem & repo scan (Trivy)) ────────────────────────────────────
+  trivy-fs:
+    name: Filesystem Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy on repository filesystem
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          exit-code: '1'           # fail the job on findings
+          ignore-unfixed: true     # skip CVEs with no available fix
+          format: sarif
+          output: trivy-fs.sarif
+
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: always()               # upload even if the scan found issues
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+          category: trivy-filesystem

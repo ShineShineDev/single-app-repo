@@ -1,0 +1,75 @@
+name: Static Analysis
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+  security-events: write   # upload SARIF to GitHub Security tab
+
+jobs:
+  # ─── 1. TypeScript type-check ─────────────────────────────────────────────
+  typecheck:
+    name: TypeScript Type-Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run TypeScript compiler (no emit)
+        run: npx tsc --noEmit
+
+  # ─── 2. Format check (Prettier) ───────────────────────────────────────────
+  format-check:
+    name: Format Check (Prettier)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+  # ─── 3. SAST – CodeQL ─────────────────────────────────────────────────────
+  codeql:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: /language:javascript-typescript
