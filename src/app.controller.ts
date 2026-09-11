@@ -8,13 +8,11 @@ export class AppController {
   @Get()
   @Header('Content-Type', 'text/html; charset=utf-8')
   getWelcome(): string {
-    let hello = 'Hello, World!';
     return this.appService.getWelcomePage();
   }
 
   @Get('health')
   getHealth(): { status: string; uptime: number; timestamp: string } {
-    const test = "TEST"
     return this.appService.getHealth();
   }
 }
