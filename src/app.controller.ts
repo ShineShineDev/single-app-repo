@@ -14,6 +14,7 @@ export class AppController {
 
   @Get('health')
   getHealth(): { status: string; uptime: number; timestamp: string } {
+    const test = "TEST"
     return this.appService.getHealth();
   }
 }
