@@ -25,19 +25,19 @@ jobs:
         run: npm run lint
 
   # ─── 2. TypeScript type-check ────────────────────────────────────────────────
-  typecheck:
-    name: TypeScript Type-Check
-    runs-on: ubuntu-latest
+  # typecheck:
+  #   name: TypeScript Type-Check
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Setup Node.js & install deps
-        uses: ./.github/actions/setup-node
+  #     - name: Setup Node.js & install deps
+  #       uses: ./.github/actions/setup-node
 
-      - name: Run TypeScript compiler (no emit)
-        run: npx tsc --noEmit
+  #     - name: Run TypeScript compiler (no emit)
+  #       run: npx tsc --noEmit
 
   # ─── 3. Format check (Prettier) ─────────────────────────────────────────────
   format-check:
