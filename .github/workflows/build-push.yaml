@@ -42,7 +42,7 @@ jobs:
       # GitHub Repository ထဲက source code ကို
       # GitHub Actions runner ထဲသို့ ယူမယ်
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
 
       # Docker Buildx ကို setup လုပ်မယ်
@@ -148,7 +148,7 @@ jobs:
 
       # Repository source code ကို runner ထဲ ယူမယ်
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
 
       # Docker Hub ထဲက Docker image ကို
@@ -195,7 +195,7 @@ jobs:
 
         # SARIF security report ကို GitHub Security tab ထဲ
         # upload လုပ်မယ့် Action
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
 
         with:
 
