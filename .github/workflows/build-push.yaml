@@ -154,7 +154,7 @@ jobs:
       # Docker Hub ထဲက Docker image ကို
       # Trivy နဲ့ vulnerability scan လုပ်မယ်
       - name: Run Trivy on Docker image
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
 
           # Repository filesystem မဟုတ်ဘဲ
