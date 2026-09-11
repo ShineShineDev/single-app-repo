@@ -1,45 +1,207 @@
 name: Build & Push
 
 on:
+  # master branch ထဲကို code push လုပ်တဲ့အခါ
+  # ဒီ workflow ကို run မယ်
   push:
     branches:
-      - master 
+      - master
+
+
+# GitHub Actions အတွက် Permission သတ်မှတ်ချက်များ
+permissions:
+
+  # Repository ထဲက source code ကို ဖတ်ခွင့်
+  contents: read
+
+  # Security scan ရဲ့ SARIF report ကို
+  # GitHub Security tab ထဲ upload လုပ်ခွင့်
+  security-events: write
+
 
 jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Docker Image Build & Push
+  #
+  # Application ရဲ့ Docker image ကို build လုပ်ပြီး
+  # Docker Hub ထဲကို push လုပ်မယ်
+  # ─────────────────────────────────────────────────────────────────────────────
   build-and-push:
     name: Build & Push Docker Image
     runs-on: ubuntu-latest
-    # Only run after tests pass
-    needs: []
+
+    # ဒီ Job က build လုပ်ပြီး ထုတ်ပေးတဲ့ Docker image tag ကို
+    # နောက် Job တွေက အသုံးပြုနိုင်အောင် output အဖြစ် ထုတ်ပေးမယ်
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+
 
     steps:
+
+      # GitHub Repository ထဲက source code ကို
+      # GitHub Actions runner ထဲသို့ ယူမယ်
       - name: Checkout code
         uses: actions/checkout@v4
 
+
+      # Docker Buildx ကို setup လုပ်မယ်
+      #
+      # Buildx က Docker image တွေကို
+      # ပိုမိုကောင်းမွန်တဲ့ build features တွေနဲ့
+      # build လုပ်နိုင်အောင် အသုံးပြုတာပါ
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+
+      # Docker Hub ထဲကို Login ဝင်မယ်
+      #
+      # Username နဲ့ Token ကို GitHub Secrets ထဲကနေ
+      # လုံခြုံစွာ ယူသုံးမယ်
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+
+      # Docker image အတွက် metadata နဲ့ tag တွေကို
+      # အလိုအလျောက် generate လုပ်မယ်
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
+
+          # Docker Hub repository name သတ်မှတ်မယ်
+          #
+          # ဥပမာ -
+          # username = shine
+          # repository = my-api
+          #
+          # ဖြစ်ရင်
+          # shine/my-api
+          # ဆိုတဲ့ image name ရမယ်
           images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}
+
           tags: |
+
+            # Git commit SHA ကို Docker image tag အဖြစ် အသုံးပြုမယ်
+            #
+            # ဥပမာ -
+            # sha-a3f9c2d
+            #
+            # လိုမျိုး ဖြစ်မယ်
             type=sha,prefix=sha-,format=short
+
+            # Default branch ဖြစ်တဲ့ master branch မှာ
+            # latest tag ကိုလည်း ထည့်ပေးမယ်
+            #
+            # ဥပမာ -
+            # username/my-api:latest
             type=raw,value=latest,enable={{is_default_branch}}
 
+
+      # Docker image ကို build လုပ်ပြီး
+      # Docker Hub ထဲကို push လုပ်မယ်
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
+
+          # Dockerfile နဲ့ application source code ရှိတဲ့
+          # လက်ရှိ directory ကို build context အဖြစ် အသုံးပြုမယ်
           context: .
+
+          # Build ပြီးတာနဲ့ Docker registry ထဲကို push လုပ်မယ်
           push: true
+
+          # အပေါ်မှာ generate လုပ်ထားတဲ့ Docker image tags တွေကို အသုံးပြုမယ်
           tags: ${{ steps.meta.outputs.tags }}
+
+          # Docker image labels တွေကို ထည့်မယ်
           labels: ${{ steps.meta.outputs.labels }}
+
+          # GitHub Actions cache ကို အသုံးပြုပြီး
+          # Docker build ကို ပိုမြန်အောင် လုပ်မယ်
           cache-from: type=gha
+
+          # Build ပြီးတဲ့ cache တွေကို GitHub Actions cache ထဲ
+          # သိမ်းထားမယ်
           cache-to: type=gha,mode=max
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Container Image Vulnerability Scan - Trivy
+  #
+  # Docker image ထဲမှာ Security Vulnerability ရှိ/မရှိ
+  # Trivy နဲ့ စစ်ဆေးမယ်
+  # ─────────────────────────────────────────────────────────────────────────────
+  trivy-image:
+    name: Container Image Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    # Build & Push Job အောင်မြင်ပြီးမှ
+    # Trivy image scan ကို run မယ်
+    needs: build-and-push
+
+
+    steps:
+
+      # Repository source code ကို runner ထဲ ယူမယ်
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+
+      # Docker Hub ထဲက Docker image ကို
+      # Trivy နဲ့ vulnerability scan လုပ်မယ်
+      - name: Run Trivy on Docker image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+
+          # Repository filesystem မဟုတ်ဘဲ
+          # Docker container image ကို scan လုပ်မယ်
+          scan-type: image
+
+          # Scan လုပ်မယ့် Docker image
+          #
+          # ဒီနေရာမှာ latest image ကို scan လုပ်ထားတယ်
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
+
+          # HIGH နဲ့ CRITICAL severity ရှိတဲ့
+          # vulnerability တွေကို စစ်မယ်
+          severity: HIGH,CRITICAL
+
+          # HIGH / CRITICAL vulnerability တွေ့ရင်
+          # Job ကို Failed ဖြစ်စေမယ်
+          exit-code: '1'
+
+          # လက်ရှိအချိန်မှာ fix မရှိသေးတဲ့ vulnerability တွေကို
+          # report ထဲကနေ ကျော်မယ်
+          ignore-unfixed: true
+
+          # Scan result ကို SARIF format နဲ့ ထုတ်မယ်
+          # GitHub Security tab မှာ ပြသနိုင်ဖို့ အသုံးပြုတာပါ
+          format: sarif
+
+          # Trivy SARIF report ကို
+          # ဒီ file ထဲမှာ သိမ်းမယ်
+          output: trivy-image.sarif
+
+
+      # Trivy scan မှာ vulnerability တွေ့ပြီး
+      # အပေါ်က step Failed ဖြစ်သွားရင်တောင်
+      # SARIF report ကို GitHub Security tab ထဲ upload လုပ်မယ်
+      - name: Upload Trivy image SARIF to GitHub Security tab
+        if: always()
+
+        # SARIF security report ကို GitHub Security tab ထဲ
+        # upload လုပ်မယ့် Action
+        uses: github/codeql-action/upload-sarif@v3
+
+        with:
+
+          # Trivy က ထုတ်ထားတဲ့ SARIF report file
+          sarif_file: trivy-image.sarif
+
+          # GitHub Security tab မှာ
+          # ဒီ report ကို Container Image scan အဖြစ် ခွဲခြားပြမယ်
+          category: trivy-container

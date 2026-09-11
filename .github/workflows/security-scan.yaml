@@ -1,0 +1,122 @@
+name: Security Scan
+
+on:
+  # Code push လုပ်တဲ့အခါ Security Scan run မယ်
+  push:
+
+  # Pull Request ဖန်တီးတဲ့အခါ / update လုပ်တဲ့အခါ Security Scan run မယ်
+  pull_request:
+
+  # အပတ်စဉ် တနင်္လာနေ့တိုင်း 08:00 UTC မှာ
+  # Security Scan အပြည့်အစုံကို အလိုအလျောက် run မယ်
+  schedule:
+    - cron: '0 8 * * 1'
+
+
+# GitHub Actions အတွက် လိုအပ်တဲ့ Permission များ
+permissions:
+
+  # Repository ထဲက source code ကို ဖတ်ခွင့်
+  contents: read
+
+  # Security scan ရဲ့ SARIF report ကို
+  # GitHub Security tab ထဲ upload လုပ်ခွင့်
+  security-events: write
+
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Dependency Audit - npm audit
+  # Project မှာ အသုံးပြုထားတဲ့ npm packages တွေထဲက
+  # Security vulnerability ရှိ/မရှိ စစ်ဆေးမယ်
+  # ─────────────────────────────────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency Audit (npm audit)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Node.js environment တည်ဆောက်ပြီး
+      # package.json / package-lock.json အရ dependencies တွေ install လုပ်မယ်
+      - name: Setup Node.js & install deps
+        uses: ./.github/actions/setup-node
+
+      # npm dependencies တွေမှာ Security vulnerability ရှိ/မရှိ စစ်မယ်
+      #
+      # HIGH နဲ့ CRITICAL vulnerability တွေ့ရင်
+      # ဒီ job ကို Failed ဖြစ်စေမယ်
+      #
+      # LOW / MODERATE vulnerability တွေ့ရင် report လုပ်ပေးမယ်
+      - name: Run npm audit
+        run: npm audit --audit-level=high
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. Filesystem & Repository Scan - Trivy
+  # Repository ထဲက files တွေ၊ dependency files တွေ၊
+  # configuration တွေ စတဲ့ filesystem content တွေကို
+  # Security vulnerability ရှိ/မရှိ စစ်ဆေးမယ်
+  # ─────────────────────────────────────────────────────────────────────────────
+  trivy-fs:
+    name: Filesystem Scan (Trivy)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # GitHub Repository ထဲက source code ကို
+      # GitHub Actions runner ထဲသို့ ယူမယ်
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Trivy နဲ့ Repository filesystem ကို Security scan လုပ်မယ်
+      - name: Run Trivy on repository filesystem
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+
+          # Container image မဟုတ်ဘဲ
+          # Filesystem ကို scan လုပ်မယ်
+          scan-type: fs
+
+          # လက်ရှိ repository directory တစ်ခုလုံးကို scan လုပ်မယ်
+          scan-ref: .
+
+          # HIGH နဲ့ CRITICAL severity ရှိတဲ့
+          # vulnerabilities တွေကိုသာ အဓိကစစ်မယ်
+          severity: HIGH,CRITICAL
+
+          # Vulnerability တွေ့ရင် Job ကို Failed ဖြစ်စေမယ်
+          # exit-code 1 = Scan findings ရှိလို့ command fail ဖြစ်ခြင်း
+          exit-code: '1'
+
+          # Fix မရသေးတဲ့ CVE တွေကို မစစ်ဘဲ ကျော်မယ်
+          # လက်ရှိ available fix ရှိတဲ့ vulnerability တွေကိုပဲ အဓိက report လုပ်မယ်
+          ignore-unfixed: true
+
+          # Scan result ကို SARIF format နဲ့ ထုတ်မယ်
+          # SARIF က Security scanning tools တွေရဲ့ result ကို
+          # GitHub Security tab မှာ ပြသနိုင်တဲ့ format ဖြစ်တယ်
+          format: sarif
+
+          # Trivy ရဲ့ SARIF report ကို
+          # ဒီ file ထဲမှာ သိမ်းမယ်
+          output: trivy-fs.sarif
+
+
+      # Trivy scan မှာ vulnerability တွေ့လို့
+      # အပေါ်က step failed ဖြစ်သွားရင်တောင်
+      # SARIF report ကို GitHub Security tab ထဲ upload လုပ်မယ်
+      - name: Upload Trivy SARIF to GitHub Security tab
+        if: always()
+
+        # GitHub ရဲ့ SARIF upload action ကို အသုံးပြုမယ်
+        uses: github/codeql-action/upload-sarif@v3
+
+        with:
+
+          # Trivy က ထုတ်ထားတဲ့ SARIF report file
+          sarif_file: trivy-fs.sarif
+
+          # GitHub Security tab မှာ
+          # ဒီ report ကို Trivy Filesystem Scan အဖြစ် ခွဲခြားပြမယ်
+          category: trivy-filesystem

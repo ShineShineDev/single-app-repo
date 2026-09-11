@@ -1,0 +1,125 @@
+name: Static Analysis
+
+# Code push လုပ်တဲ့အခါနဲ့ Pull Request ဖန်တီး/ပြောင်းလဲတဲ့အခါ
+# Static Analysis workflow ကို run မယ်
+on:
+  push:
+  pull_request:
+
+# GitHub Actions ရဲ့ Permission သတ်မှတ်ချက်များ
+permissions:
+  # Repository ထဲက code ကို ဖတ်ခွင့်
+  contents: read
+
+  # CodeQL ရဲ့ SARIF security report ကို
+  # GitHub Security tab ထဲ upload လုပ်ခွင့်
+  security-events: write
+
+jobs:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 1. Lint - Oxlint
+  # Code ရဲ့ syntax / coding rule / potential error တွေကို စစ်ဆေးခြင်း
+  # ─────────────────────────────────────────────────────────────────────────────
+  lint:
+    name: Lint (oxlint)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Node.js environment တည်ဆောက်ပြီး
+      # package.json ထဲက dependencies တွေကို install လုပ်မယ်
+      - name: Setup Node.js & install deps
+        uses: ./.github/actions/setup-node
+
+      # Oxlint ကို run မယ်
+      # Code မှာ သတ်မှတ်ထားတဲ့ linting rules နဲ့ မကိုက်ညီတာတွေကို ရှာမယ်
+      - name: Run linter
+        run: npm run lint
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 2. TypeScript Type Check
+  # TypeScript code ရဲ့ type error တွေကို စစ်ဆေးခြင်း
+  # ─────────────────────────────────────────────────────────────────────────────
+  typecheck:
+    name: TypeScript Type-Check
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Node.js environment တည်ဆောက်ပြီး dependencies install လုပ်မယ်
+      - name: Setup Node.js & install deps
+        uses: ./.github/actions/setup-node
+
+      # TypeScript compiler ကို run မယ်
+      # --noEmit ဆိုတာ JavaScript file မထုတ်ဘဲ
+      # Type error ရှိ/မရှိပဲ စစ်ဆေးမယ်ဆိုတဲ့ အဓိပ္ပါယ်
+      - name: Run TypeScript compiler (no emit)
+        run: npx tsc --noEmit
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 3. Format Check - Prettier
+  # Code formatting မှန်ကန်မှုကို စစ်ဆေးခြင်း
+  # ─────────────────────────────────────────────────────────────────────────────
+  format-check:
+    name: Format Check (Prettier)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Node.js environment တည်ဆောက်ပြီး dependencies install လုပ်မယ်
+      - name: Setup Node.js & install deps
+        uses: ./.github/actions/setup-node
+
+      # src နဲ့ test folder ထဲက TypeScript file တွေရဲ့
+      # Prettier formatting မှန်/မမှန် စစ်ဆေးမယ်
+      # --check ဖြစ်တဲ့အတွက် code ကို ကိုယ်တိုင် format ပြန်မလုပ်ပေးဘူး
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.ts" "test/**/*.ts"
+
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # 4. SAST - CodeQL
+  # Source Code ထဲက Security Vulnerability တွေကို
+  # Static Application Security Testing (SAST) နည်းလမ်းနဲ့ ရှာဖွေခြင်း
+  # ─────────────────────────────────────────────────────────────────────────────
+  codeql:
+    name: SAST (CodeQL)
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # GitHub Repository ထဲက source code ကို Runner ထဲယူမယ်
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # CodeQL analysis ကို စတင်ပြင်ဆင်မယ်
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+
+          # JavaScript / TypeScript code ကို Security analysis လုပ်မယ်
+          languages: javascript-typescript
+
+          # ပုံမှန် security queries ထက် ပိုပြီးကျယ်ပြန့်တဲ့
+          # security checks တွေကို အသုံးပြုမယ်
+          queries: security-extended
+
+      # Project ကို CodeQL analysis အတွက် build လုပ်မယ်
+      # Project configuration အပေါ်မူတည်ပြီး CodeQL က build process ကို
+      # အလိုအလျောက်ရှာပြီး လုပ်ဆောင်ပေးမယ်
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+
+      # CodeQL Security Analysis ကို run မယ်
+      # ရှာတွေ့တဲ့ security findings တွေကို GitHub Security tab မှာ
+      # SARIF format နဲ့ upload လုပ်မယ်
+      - name: Run CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+
+          # ဒီ Analysis ဟာ JavaScript / TypeScript အတွက်ဖြစ်ကြောင်း
+          # GitHub Security tab မှာ category အဖြစ် သတ်မှတ်ပေးမယ်
+          category: /language:javascript-typescript
