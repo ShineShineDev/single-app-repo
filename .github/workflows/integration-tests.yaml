@@ -1,83 +1,31 @@
 name: Integration Tests
 
 on:
-  # Code push လုပ်တဲ့အခါ Integration Tests run မယ်
   push:
-
-  # Pull Request ဖန်တီးတဲ့အခါ / update လုပ်တဲ့အခါ
-  # Integration / E2E Tests run မယ်
   pull_request:
 
-
 jobs:
-
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Integration / E2E Tests - Vitest
-  #
-  # Application ရဲ့ component / module တွေ တစ်ခုနဲ့တစ်ခု
-  # အတူတကွ မှန်ကန်စွာ အလုပ်လုပ်/မလုပ် စစ်ဆေးမယ်
-  #
-  # E2E Test ဖြစ်တဲ့အတွက် User က Application ကို အသုံးပြုသလို
-  # အစအဆုံး workflow ကိုပါ စမ်းသပ်နိုင်တယ်
-  # ─────────────────────────────────────────────────────────────────────────────
   integration-tests:
     name: Integration / E2E Tests (Vitest)
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Node.js environment တည်ဆောက်ပြီး
-      # package.json / package-lock.json အရ
-      # Project dependencies တွေကို install လုပ်မယ်
       - name: Setup Node.js & install deps
         uses: ./.github/actions/setup-node
 
-
-      # Application ကို Build လုပ်မယ်
-      #
-      # Build အချိန်မှာ TypeScript compilation,
-      # module resolution, configuration စတာတွေမှာ
-      # error ရှိ/မရှိ စစ်ဆေးနိုင်မယ်
-      #
-      # Build မအောင်မြင်ရင် အောက်က E2E Test ကို ဆက်မလုပ်တော့ဘူး
       - name: Build application
         run: npm run build
 
-
-      # Integration / E2E Tests တွေကို run မယ်
-      #
-      # Integration Test =
-      # Application ရဲ့ module / service / component တွေ
-      # အချင်းချင်း ပူးပေါင်းအလုပ်လုပ်ပုံကို စမ်းသပ်ခြင်း
-      #
-      # E2E Test =
-      # User ရဲ့ real-world workflow ကို
-      # အစကနေ အဆုံးအထိ စမ်းသပ်ခြင်း
       - name: Run E2E / integration tests
         run: npm run test:e2e
 
-
-      # Test အောင်မြင်သည်ဖြစ်စေ၊ Failed ဖြစ်သည်ဖြစ်စေ
-      # Test result files တွေကို GitHub Actions Artifact အဖြစ်
-      # upload လုပ်မယ်
-      #
-      # if: always() ကြောင့် Test Failed ဖြစ်ရင်တောင်
-      # ဒီ step ကို ဆက် run ပေးမယ်
       - name: Upload test results
         if: always()
-
-        # GitHub Actions ရဲ့ Artifact upload action
         uses: actions/upload-artifact@v4
-
         with:
-
-          # GitHub Actions မှာ သိမ်းမယ့် Artifact အမည်
           name: e2e-test-results
-
-          # E2E / Integration Test result files တွေရှိတဲ့
-          # test-results/ folder ကို upload လုပ်မယ်
           path: test-results/
-
-          # Test result files တွေကို GitHub Actions မှာ
-          # 14 ရက်ကြာ သိမ်းထားမယ်
           retention-days: 14

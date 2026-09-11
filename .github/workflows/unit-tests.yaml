@@ -1,69 +1,28 @@
 name: Unit Tests
 
 on:
-  # Code push လုပ်တဲ့အခါ Unit Tests run မယ်
   push:
-
-  # Pull Request ဖန်တီးတဲ့အခါ / update လုပ်တဲ့အခါ Unit Tests run မယ်
   pull_request:
 
-
 jobs:
-
-  # ─────────────────────────────────────────────────────────────────────────────
-  # Unit Tests - Vitest
-  # Application ရဲ့ function / module တစ်ခုချင်းစီကို
-  # မှန်ကန်စွာ အလုပ်လုပ်/မလုပ် စစ်ဆေးမယ်
-  # ─────────────────────────────────────────────────────────────────────────────
   unit-tests:
     name: Unit Tests (Vitest)
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Node.js environment တည်ဆောက်ပြီး
-      # package.json / package-lock.json အရ
-      # project dependencies တွေကို install လုပ်မယ်
       - name: Setup Node.js & install deps
         uses: ./.github/actions/setup-node
 
-
-      # Vitest Unit Tests တွေကို run မယ်
-      #
-      # test:cov ဆိုတာ Unit Tests run တဲ့အပြင်
-      # Code Coverage ကိုလည်း တစ်ခါတည်း တွက်ပေးမယ်
-      #
-      # ဥပမာ -
-      # Statements  : 90%
-      # Branches    : 85%
-      # Functions   : 95%
-      # Lines       : 91%
-      #
-      # စတဲ့ Coverage information တွေ ရလာမယ်
       - name: Run unit tests with coverage
         run: npm run test:cov
 
-
-      # Test အောင်မြင်သည်ဖြစ်စေ၊ Failed ဖြစ်သည်ဖြစ်စေ
-      # Coverage report ကို upload လုပ်မယ်
-      #
-      # if: always() ကြောင့် အပေါ်က test step Failed ဖြစ်ရင်တောင်
-      # ဒီ step ကို ဆက် run ပေးမယ်
       - name: Upload coverage report
         if: always()
-
-        # GitHub Actions ရဲ့ Artifact upload action ကို အသုံးပြုမယ်
         uses: actions/upload-artifact@v4
-
         with:
-
-          # GitHub Actions မှာ သိမ်းမယ့် Artifact ရဲ့အမည်
           name: coverage-report
-
-          # Vitest က ထုတ်ပေးတဲ့ coverage folder တစ်ခုလုံးကို
-          # Artifact အဖြစ် upload လုပ်မယ်
           path: coverage/
-
-          # Coverage report ကို GitHub Actions မှာ
-          # 14 ရက်ကြာ သိမ်းထားမယ်
           retention-days: 14
