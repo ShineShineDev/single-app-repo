@@ -166,9 +166,9 @@ jobs:
           # ဒီနေရာမှာ latest image ကို scan လုပ်ထားတယ်
           image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}:latest
 
-          # HIGH နဲ့ CRITICAL severity ရှိတဲ့
-          # vulnerability တွေကို စစ်မယ်
-          severity: HIGH,CRITICAL
+          # CRITICAL severity ရှိတဲ့
+          # vulnerability တွေကိုသာ စစ်မယ်
+          severity: CRITICAL
 
           # HIGH / CRITICAL vulnerability တွေ့ရင်
           # Job ကို Failed ဖြစ်စေမယ်
