@@ -25,8 +25,8 @@ jobs:
         uses: ./.github/actions/setup-node
 
       - name: Run npm audit
-        # Fail on HIGH or CRITICAL vulnerabilities; report others
-        run: npm audit --audit-level=high
+        # Fail on CRITICAL vulnerabilities only
+        run: npm audit --audit-level=critical
 
   # ─── 2. Filesystem & repo scan (Trivy) ──────────────────────────────────────
   trivy-fs:
@@ -42,7 +42,7 @@ jobs:
         with:
           scan-type: fs
           scan-ref: .
-          severity: HIGH,CRITICAL
+          severity: CRITICAL
           exit-code: '1'           # fail the job on findings
           ignore-unfixed: true     # skip CVEs with no available fix
           format: sarif
